@@ -1,19 +1,14 @@
 package ru.avalon.javapp.devj120.notepaddemo;
 
-import javax.security.auth.Destroyable;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Arrays;
+import java.io.*;
 
 
 public class Notepad extends JFrame {
 
     private JTextArea textArea;
-    private JScrollPane scrollPane;
 
     private JMenuBar menuBar;
     private  JMenu menu;
@@ -24,23 +19,35 @@ public class Notepad extends JFrame {
     private  JMenuItem saveAs;
     private  JMenuItem exit;
 
+    private  JFileChooser fileChooser;
 
-
-    private File[] children;
-    private JList list;
-    private JScrollPane scrollPane1;
+    private String startText = "";
 
     public Notepad() {
         setSize (600, 400);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new DemoWindowAdapter());
 
         textArea = new JTextArea();
-        scrollPane = new JScrollPane(textArea);
-        add(scrollPane, BorderLayout.CENTER);
+        textArea.setLineWrap(true);
+        textArea.setWrapStyleWord(true);
+        add(new JScrollPane(textArea), BorderLayout.CENTER);
+        
+        fileChooser = new JFileChooser();
 
+        setTitle("New file");
         setJMenuBar(createMenuBar());
         setVisible(true);
+    }
+    private class DemoWindowAdapter extends WindowAdapter {
+        @Override
+        public void windowClosing(WindowEvent e) {
+            int a = exitFileMethod();
+            if(a == 0){
+                dispose();
+            }
+        }
     }
 
     public  JMenuBar createMenuBar() {
@@ -62,12 +69,31 @@ public class Notepad extends JFrame {
         exit.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_W,
                 KeyEvent.META_DOWN_MASK));
 
-//        newFile.addActionListener(());
+        newFile.addActionListener((e -> {
+            if(textArea.getText().equals(startText)) {
+                textArea.setText("");
+            }
+            else {
+                int result = JOptionPane.showConfirmDialog(
+                        null,
+                        "Вы не сохранили результат. Сохранить?",
+                        "New file",
+                        JOptionPane.YES_NO_OPTION);
+                if (result == JOptionPane.YES_OPTION) {
+                    saveFileMethod();
+                    textArea.setText("");
+                }
+                if(result == JOptionPane.NO_OPTION){
+                    textArea.setText("");
+                }
+            }
+            setTitle("New file");
+        }));
 
 
         openFile.addActionListener((e -> {
-            if(textArea.getText().equals("")) {
-                goToDir(System.getProperty("user.dir"));
+            if(textArea.getText().equals(startText)) {
+                openFileMethod();
             }
             else {
                 int result = JOptionPane.showConfirmDialog(
@@ -76,30 +102,31 @@ public class Notepad extends JFrame {
                         "Open file",
                         JOptionPane.YES_NO_OPTION);
                 if (result == JOptionPane.YES_OPTION) {
-
+                    saveFileMethod();
                 }
                 if(result == JOptionPane.NO_OPTION){
                     textArea.setText("");
-                    goToDir(System.getProperty("user.dir"));
+                    openFileMethod();
                 }
             }
         }));
 
+        save.addActionListener((e) -> {
+            if(getTitle().equals("New file")) {
+                saveFileMethod();
+            }
+            else {
+                saving();
+            }
+            });
 
-//        save.addActionListener(());
 
-
-//        saveAs.addActionListener(());
+        saveAs.addActionListener((e) -> {
+            saveFileMethod();
+        });
 
         exit.addActionListener((e -> {
-            int result = JOptionPane.showConfirmDialog(
-                    null,
-                    "Вы действительно хотите закрыть блокнот?",
-                    "Exit",
-                    JOptionPane.YES_NO_OPTION);
-            if (result == JOptionPane.YES_OPTION) {
-                System.exit(0);
-            }
+            exitFileMethod();
         }));
 
         menu = new JMenu("Menu");
@@ -117,6 +144,77 @@ public class Notepad extends JFrame {
 
         return menuBar;
     }
+    private void openFileMethod() {
+        fileChooser.setDialogTitle("Open file");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int result = fileChooser.showOpenDialog(Notepad.this);
+        if (result == JFileChooser.APPROVE_OPTION ) {
+            readingFile();
+            setTitle(fileChooser.getSelectedFile().toString());
+        }
+    }
+
+    private int saveFileMethod() {
+        fileChooser.setDialogTitle("Сохранение файла");
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        int result = fileChooser.showSaveDialog(Notepad.this);
+        if (result == JFileChooser.APPROVE_OPTION) {
+            if (fileChooser.getDialogType() == JFileChooser.SAVE_DIALOG) {
+                File selectedFile = fileChooser.getSelectedFile();
+                if ((selectedFile != null) && selectedFile.exists()) {
+                    int response = JOptionPane.showConfirmDialog(this,
+                            "Файл " + selectedFile.getName() +
+                                    " уже существует. Вы хотите заменить существующий файл?",
+                            "Ovewrite file", JOptionPane.YES_NO_OPTION,
+                            JOptionPane.WARNING_MESSAGE);
+                    if (response != JOptionPane.YES_OPTION)
+                        return -1;
+                }
+            }
+            saving();
+        }
+        return 0;
+    }
+
+    private void saving() {
+        writeFile();
+        startText = textArea.getText();
+        setTitle(fileChooser.getSelectedFile().toString());
+        JOptionPane.showMessageDialog(Notepad.this,
+                "Файл '" + fileChooser.getSelectedFile() +
+                        " ) сохранен");
+    }
+
+    private int exitFileMethod() {
+        if(textArea.getText().equals(startText)) {
+            int result = JOptionPane.showConfirmDialog(
+                    null,
+                    "Вы действительно хотите закрыть блокнот?",
+                    "Exit",
+                    JOptionPane.YES_NO_OPTION);
+            if (result == JOptionPane.YES_OPTION) {
+                dispose();
+            }
+            if(result == JOptionPane.NO_OPTION){
+                return -1;
+            }
+        }
+        else {
+            int result = JOptionPane.showConfirmDialog(
+                    null,
+                    "Вы не сохранили результат. Сохранить?",
+                    "Exit",
+                    JOptionPane.YES_NO_OPTION);
+            if (result == JOptionPane.YES_OPTION) {
+                int a = saveFileMethod();
+                return a;
+            }
+            if(result == JOptionPane.NO_OPTION){
+                dispose();
+            }
+        }
+        return 0;
+    }
 
 
 
@@ -124,113 +222,31 @@ public class Notepad extends JFrame {
                 new Notepad();
     }
 
-    private void goToDir(String path) {
 
-        createOpenFileJframe();
-        File dir = new File(path);
-        File[] a = dir.listFiles();
-        if(a == null) {
-            textArea.setText("Error reading directory");
-            return;
-        }
-        setTitle(dir.toString());
-        children = a;
-        Arrays.sort(children, Notepad::compareFiles);
+    private void readingFile() {
+        File file = fileChooser.getSelectedFile();
 
-        File parent = dir.getParentFile();
-        if(parent != null) {
-            File[] ch = new File[children.length + 1];
-            ch[0] = parent;
-            System.arraycopy(children, 0, ch, 1, children.length);
-            children = ch;
-        }
-        String[] names = new String[children.length];
-        for(int i = 0; i < names.length; i++) {
-            names[i] = children[i].getName();
-        }
-        if(parent != null) {
-            names[0] = "...";
-        }
-        list.setListData(names);
-    }
-
-    private static int compareFiles(File f1, File f2) {
-        if(f1.isDirectory() && f2.isFile())
-            return -1;
-        if(f1.isFile() && f2.isDirectory())
-            return 1;
-        return f1.getName().compareTo(f2.getName());
-    }
-
-    private void createOpenFileJframe() {
-        JFrame jFrame = new JFrame();
-        jFrame.setSize (400, 300);
-        jFrame.setLocationRelativeTo(null);
-        jFrame.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-
-        list = new JList();
-//        list.addListSelectionListener(e -> listSelectionChanged());
-        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        list.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                if(e.getButton() == MouseEvent.BUTTON1 && e.getClickCount() == 2) {
-                    int ndx = list.getSelectedIndex();
-                    if(ndx >= 0 && children[ndx].isDirectory()) {
-                        goToDir(children[ndx].getAbsolutePath());
-                        jFrame.dispatchEvent(new WindowEvent(jFrame, WindowEvent.WINDOW_CLOSING));
-                    }
-                    if(ndx >= 0 && children[ndx].isFile()) {
-                        jFrame.dispatchEvent(new WindowEvent(jFrame, WindowEvent.WINDOW_CLOSING));
-                        listSelectionChanged();
-                    }
-                }
-            }
-        });
-        list.addKeyListener(new KeyAdapter() {
-            @Override
-            public void keyReleased(KeyEvent e) {
-                if(e.getKeyCode() == KeyEvent.VK_ENTER) {
-                    int ndx = list.getSelectedIndex();
-                    if(ndx >= 0 && children[ndx].isDirectory()) {
-                        goToDir(children[ndx].getAbsolutePath());
-                        jFrame.dispatchEvent(new WindowEvent(jFrame, WindowEvent.WINDOW_CLOSING));
-                    }
-                    if(ndx >= 0 && children[ndx].isFile()) {
-                        listSelectionChanged();
-                        jFrame.dispatchEvent(new WindowEvent(jFrame, WindowEvent.WINDOW_CLOSING));
-                    }
-                }
-            }
-        });
-
-        scrollPane1 = new JScrollPane(list);
-        jFrame.add(scrollPane1, BorderLayout.CENTER);
-
-        jFrame.setVisible(true);
-    }
-
-    private void listSelectionChanged() {
-        int ndx = list.getSelectedIndex();
-        if(ndx == -1)
-            return;
-        if(children[ndx].isDirectory()) {
-//            textArea.setText("");
-            return;
-        }
-
-        try (FileReader r = new FileReader(children[ndx])) {
-                    StringBuilder sb = new StringBuilder();
-                    char[] buf = new char[4_096];
-                    int n;
-                    while ((n = r.read(buf)) >= 0) {
-                        sb.append(buf, 0, n);
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            StringBuilder sb = new StringBuilder();
+            String s;
+            while ((s = br.readLine()) != null) {
+                        sb.append(s + "\n");
                     }
                     textArea.setText(sb.toString());
-                    textArea.setCaretPosition(0);
+                    startText = textArea.getText();
+                    textArea.setCaretPosition(startText.length());
         } catch (IOException e) {
                     textArea.setText("Error reading file" + e.getMessage() + ".");
+        }
+    }
 
+    private void writeFile() {
+        File file = fileChooser.getSelectedFile();
+
+        try (BufferedWriter bufferedWriter = new BufferedWriter( new FileWriter(file))) {
+            bufferedWriter.write(textArea.getText());
+        } catch (IOException e) {
+            textArea.setText("Error saving file" + e.getMessage() + ".");
         }
     }
 }
