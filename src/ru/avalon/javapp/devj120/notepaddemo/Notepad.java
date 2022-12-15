@@ -43,10 +43,7 @@ public class Notepad extends JFrame {
     private class DemoWindowAdapter extends WindowAdapter {
         @Override
         public void windowClosing(WindowEvent e) {
-            int a = exitFileMethod();
-            if(a == 0){
-                dispose();
-            }
+            closing();
         }
     }
 
@@ -71,7 +68,7 @@ public class Notepad extends JFrame {
 
         newFile.addActionListener((e -> {
             if(textArea.getText().equals(startText)) {
-                textArea.setText("");
+                clearing();
             }
             else {
                 int result = JOptionPane.showConfirmDialog(
@@ -81,10 +78,11 @@ public class Notepad extends JFrame {
                         JOptionPane.YES_NO_OPTION);
                 if (result == JOptionPane.YES_OPTION) {
                     saveFileMethod();
-                    textArea.setText("");
+                    clearing();
+
                 }
                 if(result == JOptionPane.NO_OPTION){
-                    textArea.setText("");
+                    clearing();
                 }
             }
             setTitle("New file");
@@ -103,6 +101,8 @@ public class Notepad extends JFrame {
                         JOptionPane.YES_NO_OPTION);
                 if (result == JOptionPane.YES_OPTION) {
                     saveFileMethod();
+                    textArea.setText("");
+                    openFileMethod();
                 }
                 if(result == JOptionPane.NO_OPTION){
                     textArea.setText("");
@@ -126,7 +126,7 @@ public class Notepad extends JFrame {
         });
 
         exit.addActionListener((e -> {
-            exitFileMethod();
+            closing();
         }));
 
         menu = new JMenu("Menu");
@@ -216,7 +216,17 @@ public class Notepad extends JFrame {
         return 0;
     }
 
+    private void clearing() {
+        textArea.setText("");
+        startText = textArea.getText();
+    }
 
+    private void closing() {
+        int a = exitFileMethod();
+        if(a == 0){
+            dispose();
+        }
+    }
 
     public static void main(String[] args) {
                 new Notepad();
