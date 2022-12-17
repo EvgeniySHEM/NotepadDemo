@@ -35,6 +35,7 @@ public class Notepad extends JFrame {
         add(new JScrollPane(textArea), BorderLayout.CENTER);
         
         fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
 
         setTitle("New file");
         setJMenuBar(createMenuBar());
@@ -101,12 +102,10 @@ public class Notepad extends JFrame {
                         JOptionPane.YES_NO_OPTION);
                 if (result == JOptionPane.YES_OPTION) {
                     saveFileMethod();
-                    textArea.setText("");
-                    openFileMethod();
+                    clearAndOpen();
                 }
                 if(result == JOptionPane.NO_OPTION){
-                    textArea.setText("");
-                    openFileMethod();
+                    clearAndOpen();
                 }
             }
         }));
@@ -131,6 +130,7 @@ public class Notepad extends JFrame {
 
         menu = new JMenu("Menu");
         menu.setMnemonic(KeyEvent.VK_A);
+
         menu.add(newFile);
         menu.add(openFile);
         menu.addSeparator();
@@ -146,7 +146,6 @@ public class Notepad extends JFrame {
     }
     private void openFileMethod() {
         fileChooser.setDialogTitle("Open file");
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         int result = fileChooser.showOpenDialog(Notepad.this);
         if (result == JFileChooser.APPROVE_OPTION ) {
             readingFile();
@@ -156,7 +155,6 @@ public class Notepad extends JFrame {
 
     private int saveFileMethod() {
         fileChooser.setDialogTitle("Сохранение файла");
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
         int result = fileChooser.showSaveDialog(Notepad.this);
         if (result == JFileChooser.APPROVE_OPTION) {
             if (fileChooser.getDialogType() == JFileChooser.SAVE_DIALOG) {
@@ -221,6 +219,11 @@ public class Notepad extends JFrame {
         startText = textArea.getText();
     }
 
+    private void clearAndOpen() {
+        textArea.setText("");
+        openFileMethod();
+    }
+
     private void closing() {
         int a = exitFileMethod();
         if(a == 0){
@@ -244,9 +247,11 @@ public class Notepad extends JFrame {
                     }
                     textArea.setText(sb.toString());
                     startText = textArea.getText();
-                    textArea.setCaretPosition(startText.length());
+                    textArea.setCaretPosition(0);
         } catch (IOException e) {
-                    textArea.setText("Error reading file" + e.getMessage() + ".");
+            JOptionPane.showMessageDialog(this,
+                    "Error reading file" + e.getMessage() + ".", "Error reading file",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -256,7 +261,9 @@ public class Notepad extends JFrame {
         try (BufferedWriter bufferedWriter = new BufferedWriter( new FileWriter(file))) {
             bufferedWriter.write(textArea.getText());
         } catch (IOException e) {
-            textArea.setText("Error saving file" + e.getMessage() + ".");
+            JOptionPane.showMessageDialog(this,
+                    "Error saving file" + e.getMessage() + ".", "Error write file",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 }
